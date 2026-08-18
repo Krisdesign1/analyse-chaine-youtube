@@ -1,17 +1,27 @@
 /* ── Estimation du quota YouTube Data API v3 consommé aujourd'hui ──
-   Additionne le coût documenté de chaque appel fait par l'app (channels.list,
-   search.list, etc.). Approximatif : remis à zéro à minuit heure locale, alors
-   que le vrai quota Google se remet à zéro à minuit heure du Pacifique — l'écart
-   reste faible, c'est un ordre de grandeur, pas un compteur officiel. */
+   Additionne le coût documenté de chaque appel fait par l'app. Approximatif : remis
+   à zéro à minuit heure locale, alors que le vrai quota Google se remet à zéro à
+   minuit heure du Pacifique — l'écart reste faible, c'est un ordre de grandeur, pas
+   un compteur officiel.
+
+   Deux paniers séparés, vérifiés sur la documentation officielle Google
+   (developers.google.com/youtube/v3/determine_quota_cost) :
+   - le panier principal (10 000 unités/jour), partagé par la plupart des endpoints ;
+   - search.list a SON PROPRE panier ("Search Queries"), 100 appels/jour à 1 unité
+     chacun, totalement indépendant du panier principal. Le compter dans le même
+     total que le reste (comme une version précédente de ce fichier le faisait, à
+     100 unités) exagérait fortement son coût réel. */
 
 const STORAGE_KEY = "yt:quotaUsage";
 export const QUOTA_DAILY_LIMIT = 10000;
+export const SEARCH_DAILY_LIMIT = 100;
+
+const SEARCH_ENDPOINT = "search.list";
 
 export const COSTS = {
   "channels.list": 1,
   "playlistItems.list": 1,
   "videos.list": 1,
-  "search.list": 100,
   "commentThreads.list": 1,
   "captions.list": 50,
   "captions.download": 200,
@@ -27,7 +37,7 @@ function load() {
     const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
     if (raw && raw.date === todayKey()) return raw;
   } catch (e) {}
-  return { date: todayKey(), used: 0 };
+  return { date: todayKey(), used: 0, searchCalls: 0 };
 }
 
 function save(state) {
@@ -40,15 +50,22 @@ function save(state) {
    consomme quand même son unité de quota côté Google, sauf s'il est lui-même
    rejeté pour cause de quota déjà épuisé). */
 export function recordQuota(endpoint) {
-  const cost = COSTS[endpoint] ?? 0;
   const state = load();
-  state.used += cost;
+  if (endpoint === SEARCH_ENDPOINT) {
+    state.searchCalls = (state.searchCalls || 0) + 1;
+  } else {
+    state.used += COSTS[endpoint] ?? 0;
+  }
   save(state);
-  return state.used;
+  return state;
 }
 
 export function getQuotaUsed() {
   return load().used;
+}
+
+export function getSearchCalls() {
+  return load().searchCalls || 0;
 }
 
 export const QUOTA_MESSAGE = "Quota YouTube épuisé pour aujourd'hui. Il se remet à zéro à 9 h (heure de Kinshasa).";

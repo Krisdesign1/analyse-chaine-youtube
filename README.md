@@ -200,10 +200,14 @@ src/
 - **`lib/hooks.js`** : télécharge le sous-titre des vidéos échantillonnées de **ta propre chaîne**
   connectée et n'en garde que les 25 premières secondes. `captions.download` n'est autorisé par
   l'API que pour le propriétaire de la vidéo — impossible d'obtenir le script d'une chaîne tierce
-  par ce biais, quel que soit l'outil utilisé.
+  par ce biais, quel que soit l'outil utilisé. Se charge via un bouton dédié plutôt
+  qu'automatiquement à chaque analyse : jusqu'à ~2 500 unités de quota par chargement
+  (`captions.list` = 50 + `captions.download` = 200, par vidéo échantillonnée), bien plus cher que
+  le reste de l'analyse réuni — trop coûteux pour se déclencher sans confirmation explicite.
 - **`lib/trends.js`** : recherche manuelle et ponctuelle des vidéos les plus vues sur toute la
-  plateforme pour un mot-clé (`search.list`, 100 unités de quota par recherche — c'est pour ça
-  qu'elle n'est jamais lancée automatiquement, contrairement au reste).
+  plateforme pour un mot-clé (`search.list` coûte 1 unité, mais dans un panier de quota séparé du
+  panier principal, plafonné à 100 recherches/jour — vérifié sur la documentation officielle
+  Google).
 - **Comparaison** : un second lien optionnel dans le panneau de gauche lance une deuxième analyse
   complète et affiche un tableau comparatif (score de santé et indicateurs clés, chaîne par
   chaîne, avec la valeur la plus favorable mise en évidence).

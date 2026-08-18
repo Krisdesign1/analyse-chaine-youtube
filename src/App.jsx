@@ -41,7 +41,7 @@ import { analyseComments } from "./lib/comments";
 import { fetchHooks } from "./lib/hooks";
 import { searchTrending } from "./lib/trends";
 import { lastSnapshot, addSnapshot, deltaSince, allChannels } from "./lib/snapshots";
-import { getQuotaUsed } from "./lib/quota";
+import { getQuotaUsed, getSearchCalls } from "./lib/quota";
 
 const KEY_STORAGE = "yt:key";
 const HISTORY_STORAGE = "yt:history";
@@ -79,6 +79,7 @@ export default function App() {
   const [hooksData, setHooksData] = useState(null);
   const [hooksBusy, setHooksBusy] = useState(false);
   const [hooksStep, setHooksStep] = useState("");
+  const [hooksNote, setHooksNote] = useState("");
 
   const [resB, setResB] = useState(null);
   const [compareBusy, setCompareBusy] = useState(false);
@@ -91,8 +92,12 @@ export default function App() {
   const [trendErr, setTrendErr] = useState("");
 
   const [quotaUsed, setQuotaUsed] = useState(0);
+  const [searchCalls, setSearchCalls] = useState(0);
   const [trackedChannels, setTrackedChannels] = useState([]);
-  const refreshQuota = () => setQuotaUsed(getQuotaUsed());
+  const refreshQuota = () => {
+    setQuotaUsed(getQuotaUsed());
+    setSearchCalls(getSearchCalls());
+  };
   const refreshTracked = () => setTrackedChannels(allChannels());
 
   const onTokenResult = (accessToken, error) => {
@@ -188,11 +193,17 @@ export default function App() {
     }
   };
 
-  const runHooks = async (accessToken, videos) => {
+  const runHooks = async (videos) => {
+    const token = getValidToken();
+    if (!token) {
+      setHooksNote("Ta connexion Google a expiré (environ 1 h) — reconnecte-toi dans le panneau de gauche puis relance le chargement des scripts.");
+      return;
+    }
+    setHooksNote("");
     setHooksBusy(true);
     setHooksData(null);
     try {
-      setHooksData(await fetchHooks(accessToken, videos, { say: setHooksStep }));
+      setHooksData(await fetchHooks(token, videos, { say: setHooksStep }));
     } catch (e) {
       // Bonus non bloquant.
     } finally {
@@ -241,6 +252,7 @@ export default function App() {
     setTagData(null);
     setCommentData(null);
     setHooksData(null);
+    setHooksNote("");
     setSnapshotDelta(null);
     setResB(null);
     setCompareErr("");
@@ -299,7 +311,10 @@ export default function App() {
           } catch (e) {
             // Le total sur la chaîne reste affiché même si la ventilation par vidéo échoue.
           }
-          runHooks(token, r.videos);
+          // Les scripts (hooks) ne se chargent plus automatiquement : jusqu'à ~2 500 unités
+          // de quota par lancement (captions.list=50 + captions.download=200 par vidéo,
+          // sur 10 vidéos échantillonnées), contre 1-2 unités pour tout le reste de
+          // l'analyse — trop cher pour se déclencher sans confirmation explicite.
         }
       } else if (connectedChannel) {
         setAnalyticsNote(
@@ -406,7 +421,7 @@ export default function App() {
             />
           )}
 
-          {keySaved && <QuotaMeter used={quotaUsed} />}
+          {keySaved && <QuotaMeter used={quotaUsed} searchCalls={searchCalls} />}
 
           {busy && (
             <div style={{ fontFamily: MONO, color: C.signal, fontSize: 12 }} className="mt-6">
@@ -497,9 +512,27 @@ export default function App() {
                   </ErrorBoundary>
                   <ErrorBoundary label="Scripts">
                     <div id="sec-hooks">
-                      {hooksBusy && (
-                        <div style={{ fontFamily: MONO, color: C.signal, fontSize: 12 }} className="mt-4">
-                          {hooksStep || "Lecture des scripts…"}
+                      {connectedChannel && connectedChannel.id === res.channel.id && !hooksData && (
+                        <div className="mt-8">
+                          <Eyebrow>Scripts (accroches)</Eyebrow>
+                          <button
+                            onClick={() => runHooks(res.videos)}
+                            disabled={hooksBusy}
+                            style={{ border: `1px solid ${C.line}`, borderRadius: 6, fontFamily: MONO, fontSize: 11 }}
+                            className="px-3 py-2 uppercase disabled:opacity-50"
+                          >
+                            {hooksBusy ? "…" : "Charger les scripts (jusqu'à ~2 500 unités de quota)"}
+                          </button>
+                          {hooksBusy && (
+                            <div style={{ fontFamily: MONO, color: C.signal, fontSize: 12 }} className="mt-2">
+                              {hooksStep || "Lecture des scripts…"}
+                            </div>
+                          )}
+                          {hooksNote && (
+                            <div style={{ color: C.warn, fontSize: 12 }} className="mt-2 leading-relaxed">
+                              {hooksNote}
+                            </div>
+                          )}
                         </div>
                       )}
                       <HooksPanel hooks={hooksData} />

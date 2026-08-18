@@ -57,10 +57,14 @@ export async function fetchHooks(accessToken, videos, { sampleSize = 5, say } = 
     ...sorted.slice(0, sampleSize).map((v) => ({ ...v, group: "top" })),
     ...sorted.slice(-sampleSize).map((v) => ({ ...v, group: "flop" })),
   ];
+  // Sur une petite chaîne (moins de 2×sampleSize vidéos), top et flop se chevauchent :
+  // sans déduplication, la même vidéo serait interrogée deux fois (jusqu'à 500 unités
+  // de quota gaspillées par vidéo en double, à 250 unités l'appel).
+  const uniqueSample = [...new Map(sample.map((v) => [v.id, v])).values()];
 
   const out = [];
   let done = 0;
-  for (const v of sample) {
+  for (const v of uniqueSample) {
     try {
       const tracks = await listCaptions(accessToken, v.id);
       const track = tracks.find((t) => t.snippet?.trackKind !== "ASR") || tracks[0];
@@ -73,7 +77,7 @@ export async function fetchHooks(accessToken, videos, { sampleSize = 5, say } = 
       // Pas de sous-titres accessibles sur cette vidéo : on l'ignore, sans bloquer les autres.
     }
     done++;
-    say?.(`Lecture des scripts… (${done}/${sample.length})`);
+    say?.(`Lecture des scripts… (${done}/${uniqueSample.length})`);
   }
   return out;
 }

@@ -26,9 +26,17 @@ describe("quota", () => {
   it("additionne le coût de chaque appel selon son type", async () => {
     const { recordQuota, getQuotaUsed } = await import("./quota");
     recordQuota("channels.list"); // 1
-    recordQuota("search.list"); // 100
     recordQuota("captions.download"); // 200
-    expect(getQuotaUsed()).toBe(301);
+    expect(getQuotaUsed()).toBe(201);
+  });
+
+  it("search.list ne compte pas dans le panier principal (panier séparé)", async () => {
+    const { recordQuota, getQuotaUsed, getSearchCalls } = await import("./quota");
+    recordQuota("channels.list"); // 1, panier principal
+    recordQuota("search.list");
+    recordQuota("search.list");
+    expect(getQuotaUsed()).toBe(1); // search.list absent du panier principal
+    expect(getSearchCalls()).toBe(2);
   });
 
   it("ignore un type d'appel inconnu (coût 0) sans planter", async () => {

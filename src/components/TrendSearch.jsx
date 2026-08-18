@@ -9,8 +9,9 @@ export default function TrendSearch({ onRun, busy, err, hasResults, onClear }) {
     <div style={{ borderTop: `1px solid ${C.line}` }} className="mt-6 pt-4">
       <Eyebrow>Recherche de tendances</Eyebrow>
       <p style={{ fontSize: 12, color: C.muted }} className="leading-relaxed mb-3">
-        Cherche les vidéos les plus vues sur tout YouTube pour un mot-clé. Coûte 100 unités de
-        quota par recherche (contre 1 pour une analyse) — à utiliser au compte-gouttes.
+        Cherche les vidéos les plus vues sur tout YouTube pour un mot-clé. Coûte 1 unité par
+        recherche, mais dans un panier séparé plafonné à 100 recherches par jour — à utiliser avec
+        un peu de mesure malgré tout.
       </p>
       <div className="flex gap-2">
         <input

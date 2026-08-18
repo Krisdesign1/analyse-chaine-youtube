@@ -64,4 +64,29 @@ describe("fetchHooks", () => {
     expect(out[0].id).toBe("b");
     expect(out[0].hook).toContain("Salut à tous");
   });
+
+  it("ne consulte pas deux fois la même vidéo quand top et flop se chevauchent (petite chaîne)", async () => {
+    const captionsListCalls = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url) => {
+        if (String(url).includes("/captions?")) {
+          captionsListCalls.push(new URL(url).searchParams.get("videoId"));
+          return { ok: true, json: async () => ({ items: [] }) }; // pas de sous-titres, peu importe ici
+        }
+        return { ok: true, text: async () => SAMPLE_SRT };
+      })
+    );
+
+    // 3 vidéos seulement, sampleSize par défaut (5) : top5 et flop5 se chevauchent entièrement.
+    const videos = [
+      { id: "a", title: "A", rythme: 3 },
+      { id: "b", title: "B", rythme: 2 },
+      { id: "c", title: "C", rythme: 1 },
+    ];
+    await fetchHooks("token", videos);
+
+    expect(captionsListCalls).toHaveLength(3);
+    expect(new Set(captionsListCalls).size).toBe(3);
+  });
 });
