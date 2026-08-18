@@ -2,7 +2,7 @@
    Usage volontairement manuel et occasionnel : search.list coûte 100 unités
    de quota par appel (contre 1 pour la plupart des autres endpoints). */
 import { parseDuration } from "./format";
-import { recordQuota } from "./quota";
+import { recordQuota, isQuotaError, QUOTA_MESSAGE } from "./quota";
 
 const API = "https://www.googleapis.com/youtube/v3";
 
@@ -12,9 +12,7 @@ async function call(path, params, key) {
   recordQuota(`${path}.list`);
   const j = await r.json();
   if (!r.ok) {
-    const reason = j?.error?.errors?.[0]?.reason || "";
-    if (reason === "quotaExceeded")
-      throw new Error("Quota YouTube épuisé pour aujourd'hui. Il se remet à zéro à 9 h (heure de Kinshasa).");
+    if (isQuotaError(j, r.status)) throw new Error(QUOTA_MESSAGE);
     throw new Error(j?.error?.message || "Recherche refusée par l'API YouTube.");
   }
   return j;

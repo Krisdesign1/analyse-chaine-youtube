@@ -1,5 +1,5 @@
 import { median, parseDuration, ageDays, dayName } from "./format";
-import { recordQuota } from "./quota";
+import { recordQuota, isQuotaError, QUOTA_MESSAGE } from "./quota";
 
 const API = "https://www.googleapis.com/youtube/v3";
 
@@ -22,9 +22,8 @@ async function call(path, params, key) {
   recordQuota(`${path}.list`);
   const j = await r.json();
   if (!r.ok) {
+    if (isQuotaError(j, r.status)) throw new Error(QUOTA_MESSAGE);
     const reason = j?.error?.errors?.[0]?.reason || "";
-    if (reason === "quotaExceeded")
-      throw new Error("Quota YouTube épuisé pour aujourd'hui. Il se remet à zéro à 9 h (heure de Kinshasa).");
     if (reason === "keyInvalid" || r.status === 400)
       throw new Error("Clé API refusée. Vérifie qu'elle est active et que l'API YouTube Data v3 est activée.");
     throw new Error(j?.error?.message || "L'API YouTube a refusé la requête.");

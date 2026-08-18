@@ -66,3 +66,37 @@ describe("quota", () => {
     expect(getQuotaUsed()).toBe(0);
   });
 });
+
+describe("isQuotaError", () => {
+  it("reconnaît l'ancien format (error.errors[0].reason)", async () => {
+    const { isQuotaError } = await import("./quota");
+    const json = { error: { errors: [{ reason: "quotaExceeded" }] } };
+    expect(isQuotaError(json, 403)).toBe(true);
+  });
+
+  it("reconnaît le nouveau format standardisé (error.status)", async () => {
+    const { isQuotaError } = await import("./quota");
+    const json = { error: { status: "RESOURCE_EXHAUSTED", message: "peu importe" } };
+    expect(isQuotaError(json, 403)).toBe(true);
+  });
+
+  it("reconnaît un 403 dont le message mentionne le quota, sans reason ni status connus", async () => {
+    const { isQuotaError } = await import("./quota");
+    const json = {
+      error: { message: "The request cannot be completed because you have exceeded your quota." },
+    };
+    expect(isQuotaError(json, 403)).toBe(true);
+  });
+
+  it("ne déclenche pas sur une autre erreur 403 sans rapport avec le quota", async () => {
+    const { isQuotaError } = await import("./quota");
+    const json = { error: { message: "Access forbidden for this resource." } };
+    expect(isQuotaError(json, 403)).toBe(false);
+  });
+
+  it("ne déclenche pas sur une erreur 400 même si le mot quota apparaît ailleurs", async () => {
+    const { isQuotaError } = await import("./quota");
+    const json = { error: { message: "Invalid quota parameter in request." } };
+    expect(isQuotaError(json, 400)).toBe(false);
+  });
+});

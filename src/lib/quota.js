@@ -50,3 +50,19 @@ export function recordQuota(endpoint) {
 export function getQuotaUsed() {
   return load().used;
 }
+
+export const QUOTA_MESSAGE = "Quota YouTube épuisé pour aujourd'hui. Il se remet à zéro à 9 h (heure de Kinshasa).";
+
+/* Détecte une erreur de quota quel que soit le format renvoyé par Google : l'ancien
+   (error.errors[0].reason === "quotaExceeded"), le nouveau standardisé
+   (error.status === "RESOURCE_EXHAUSTED"), ou en dernier recours un 403 dont le
+   message mentionne "quota" en toutes lettres — pour ne jamais laisser passer le
+   message brut de Google faute d'avoir deviné le bon format. */
+export function isQuotaError(json, status) {
+  const err = json?.error;
+  const reason = err?.errors?.[0]?.reason || "";
+  if (reason === "quotaExceeded") return true;
+  if (err?.status === "RESOURCE_EXHAUSTED") return true;
+  if (status === 403 && /quota/i.test(err?.message || "")) return true;
+  return false;
+}
