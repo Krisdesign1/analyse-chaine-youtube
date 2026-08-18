@@ -35,6 +35,27 @@ export function addSnapshot(channelId, snapshot) {
   saveAll(all);
 }
 
+/* Toutes les chaînes ayant au moins un instantané, avec leur dernier score et son évolution
+   par rapport au précédent — pour le tableau "Chaînes suivies", triées de la plus récemment
+   analysée à la plus ancienne. */
+export function allChannels() {
+  const all = loadAll();
+  return Object.entries(all)
+    .filter(([, list]) => list.length > 0)
+    .map(([channelId, list]) => {
+      const last = list[list.length - 1];
+      const prev = list.length >= 2 ? list[list.length - 2] : null;
+      return {
+        channelId,
+        title: last.title || channelId,
+        count: list.length,
+        last,
+        scoreDelta: prev ? last.score - prev.score : null,
+      };
+    })
+    .sort((a, b) => new Date(b.last.date) - new Date(a.last.date));
+}
+
 /* Écart entre le dernier instantané enregistré et l'analyse qui vient de tourner. */
 export function deltaSince(prev, r, score) {
   if (!prev) return null;

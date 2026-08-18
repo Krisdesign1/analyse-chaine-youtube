@@ -2,12 +2,14 @@
    Usage volontairement manuel et occasionnel : search.list coûte 100 unités
    de quota par appel (contre 1 pour la plupart des autres endpoints). */
 import { parseDuration } from "./format";
+import { recordQuota } from "./quota";
 
 const API = "https://www.googleapis.com/youtube/v3";
 
 async function call(path, params, key) {
   const q = new URLSearchParams({ ...params, key }).toString();
   const r = await fetch(`${API}/${path}?${q}`);
+  recordQuota(`${path}.list`);
   const j = await r.json();
   if (!r.ok) {
     const reason = j?.error?.errors?.[0]?.reason || "";

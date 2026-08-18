@@ -1,4 +1,5 @@
 import { median, parseDuration, ageDays, dayName } from "./format";
+import { recordQuota } from "./quota";
 
 const API = "https://www.googleapis.com/youtube/v3";
 
@@ -18,6 +19,7 @@ export function readLink(raw) {
 async function call(path, params, key) {
   const q = new URLSearchParams({ ...params, key }).toString();
   const r = await fetch(`${API}/${path}?${q}`);
+  recordQuota(`${path}.list`);
   const j = await r.json();
   if (!r.ok) {
     const reason = j?.error?.errors?.[0]?.reason || "";

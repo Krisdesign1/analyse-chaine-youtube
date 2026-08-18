@@ -3,6 +3,7 @@
    (sous-titres) de tes propres vidéos.
    N'utilise que Google Identity Services côté navigateur (pas de backend,
    pas de secret exposé) : https://accounts.google.com/gsi/client            */
+import { recordQuota } from "./quota";
 
 const SCOPES = [
   "https://www.googleapis.com/auth/yt-analytics.readonly",
@@ -81,6 +82,7 @@ export async function fetchMyChannel(accessToken) {
   const r = await fetch("https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true", {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
+  recordQuota("channels.list");
   const j = await r.json();
   if (!r.ok) throw new Error(j?.error?.message || "Impossible de récupérer ta chaîne.");
   const ch = j.items?.[0];

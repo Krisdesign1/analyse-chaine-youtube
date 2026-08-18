@@ -85,4 +85,43 @@ describe("snapshots", () => {
     expect(() => addSnapshot("UC1", { portee: 1, score: 1 })).not.toThrow();
     expect(lastSnapshot("UC1")).toBeNull();
   });
+
+  it("allChannels renvoie un tableau vide sans historique", async () => {
+    const { allChannels } = await import("./snapshots");
+    expect(allChannels()).toEqual([]);
+  });
+
+  it("allChannels liste chaque chaîne avec son dernier score et le delta vs le précédent", async () => {
+    const { addSnapshot, allChannels } = await import("./snapshots");
+    addSnapshot("UC1", { title: "Chaîne A", portee: 10, score: 40 });
+    addSnapshot("UC1", { title: "Chaîne A", portee: 20, score: 55 });
+    addSnapshot("UC2", { title: "Chaîne B", portee: 90, score: 80 });
+
+    const all = allChannels();
+    expect(all).toHaveLength(2);
+
+    const a = all.find((c) => c.channelId === "UC1");
+    expect(a.title).toBe("Chaîne A");
+    expect(a.count).toBe(2);
+    expect(a.last.score).toBe(55);
+    expect(a.scoreDelta).toBe(15);
+
+    const b = all.find((c) => c.channelId === "UC2");
+    expect(b.count).toBe(1);
+    expect(b.scoreDelta).toBeNull(); // pas de précédent
+  });
+
+  it("allChannels trie de la plus récemment analysée à la plus ancienne", async () => {
+    const { addSnapshot, allChannels } = await import("./snapshots");
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-01-01"));
+    addSnapshot("UC_OLD", { title: "Ancienne", score: 10 });
+    vi.setSystemTime(new Date("2024-06-01"));
+    addSnapshot("UC_NEW", { title: "Récente", score: 20 });
+    vi.useRealTimers();
+
+    const all = allChannels();
+    expect(all[0].channelId).toBe("UC_NEW");
+    expect(all[1].channelId).toBe("UC_OLD");
+  });
 });

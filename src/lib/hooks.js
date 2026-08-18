@@ -4,6 +4,8 @@
    youtube.force-ssl). Impossible d'obtenir le script d'une chaîne tierce
    par ce biais — restriction de la plateforme, pas de cette app. */
 
+import { recordQuota } from "./quota";
+
 const API = "https://www.googleapis.com/youtube/v3";
 const HOOK_SECONDS = 25;
 
@@ -32,6 +34,7 @@ export function srtToHook(srt, seconds = HOOK_SECONDS) {
 async function listCaptions(accessToken, videoId) {
   const q = new URLSearchParams({ part: "snippet", videoId }).toString();
   const r = await fetch(`${API}/captions?${q}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+  recordQuota("captions.list");
   if (!r.ok) return [];
   const j = await r.json();
   return j.items || [];
@@ -41,6 +44,7 @@ async function downloadCaption(accessToken, captionId) {
   const r = await fetch(`${API}/captions/${captionId}?tfmt=srt`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
+  recordQuota("captions.download");
   if (!r.ok) throw new Error("Téléchargement du sous-titre refusé.");
   return await r.text();
 }

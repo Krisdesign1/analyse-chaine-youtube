@@ -3,6 +3,7 @@
    (top + flop) pour garder le coût en quota raisonnable sur une chaîne
    de plusieurs centaines de vidéos. */
 import { tokenize } from "./text";
+import { recordQuota } from "./quota";
 
 const API = "https://www.googleapis.com/youtube/v3";
 
@@ -19,6 +20,7 @@ async function fetchComments(videoId, key, maxResults = 50) {
     key,
   }).toString();
   const r = await fetch(`${API}/commentThreads?${q}`);
+  recordQuota("commentThreads.list");
   if (!r.ok) return []; // commentaires désactivés, vidéo privée, etc. : on ignore cette vidéo sans bloquer l'ensemble
   const j = await r.json();
   return (j.items || [])

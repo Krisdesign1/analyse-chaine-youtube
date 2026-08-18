@@ -28,6 +28,8 @@ import TrendSearch from "./components/TrendSearch";
 import TrendResults from "./components/TrendResults";
 import SectionNav from "./components/SectionNav";
 import ErrorBoundary from "./components/ErrorBoundary";
+import QuotaMeter from "./components/QuotaMeter";
+import TrackedChannels from "./components/TrackedChannels";
 import { analyse } from "./lib/youtube";
 import { directives } from "./lib/directives";
 import { initTokenClient, connect as oauthConnect, disconnect as oauthDisconnect, getValidToken, fetchMyChannel } from "./lib/oauth";
@@ -38,7 +40,8 @@ import { tagSignals } from "./lib/tags";
 import { analyseComments } from "./lib/comments";
 import { fetchHooks } from "./lib/hooks";
 import { searchTrending } from "./lib/trends";
-import { lastSnapshot, addSnapshot, deltaSince } from "./lib/snapshots";
+import { lastSnapshot, addSnapshot, deltaSince, allChannels } from "./lib/snapshots";
+import { getQuotaUsed } from "./lib/quota";
 
 const KEY_STORAGE = "yt:key";
 const HISTORY_STORAGE = "yt:history";
@@ -87,6 +90,11 @@ export default function App() {
   const [trendBusy, setTrendBusy] = useState(false);
   const [trendErr, setTrendErr] = useState("");
 
+  const [quotaUsed, setQuotaUsed] = useState(0);
+  const [trackedChannels, setTrackedChannels] = useState([]);
+  const refreshQuota = () => setQuotaUsed(getQuotaUsed());
+  const refreshTracked = () => setTrackedChannels(allChannels());
+
   const onTokenResult = (accessToken, error) => {
     setConnecting(false);
     if (error) {
@@ -95,7 +103,8 @@ export default function App() {
     }
     fetchMyChannel(accessToken)
       .then((ch) => setConnectedChannel(ch))
-      .catch((e) => setConnectErr(e.message));
+      .catch((e) => setConnectErr(e.message))
+      .finally(refreshQuota);
   };
 
   // Initialise la connexion Google : attend que le script accounts.google.com/gsi/client
@@ -127,6 +136,8 @@ export default function App() {
         initOauth(c);
       }
     } catch (e) {}
+    refreshQuota();
+    refreshTracked();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -173,6 +184,7 @@ export default function App() {
     } finally {
       setCommentBusy(false);
       setCommentStep("");
+      refreshQuota();
     }
   };
 
@@ -186,6 +198,7 @@ export default function App() {
     } finally {
       setHooksBusy(false);
       setHooksStep("");
+      refreshQuota();
     }
   };
 
@@ -201,6 +214,7 @@ export default function App() {
       setTrendErr(e.message);
     } finally {
       setTrendBusy(false);
+      refreshQuota();
     }
   };
 
@@ -258,6 +272,7 @@ export default function App() {
         const prevSnap = lastSnapshot(r.channel.id);
         setSnapshotDelta(deltaSince(prevSnap, r, score));
         addSnapshot(r.channel.id, {
+          title: r.channel.title,
           medViews: r.stats.medViews,
           portee: r.stats.portee,
           tendance: r.stats.tendance,
@@ -267,6 +282,7 @@ export default function App() {
           subs: r.channel.subs,
           score: score.total,
         });
+        refreshTracked();
       } catch (e) {}
       if (connectedChannel && connectedChannel.id === r.channel.id) {
         const token = getValidToken();
@@ -295,6 +311,7 @@ export default function App() {
     } finally {
       setBusy(false);
       setStep("");
+      refreshQuota();
     }
   };
 
@@ -389,6 +406,8 @@ export default function App() {
             />
           )}
 
+          {keySaved && <QuotaMeter used={quotaUsed} />}
+
           {busy && (
             <div style={{ fontFamily: MONO, color: C.signal, fontSize: 12 }} className="mt-6">
               {step}
@@ -407,11 +426,14 @@ export default function App() {
         {/* Contenu principal : résultats */}
         <main className="p-10">
           {!res && !busy && !err && !trendResults && (
-            <div
-              style={{ color: C.muted, fontSize: 14, minHeight: 420 }}
-              className="w-full h-full flex items-center justify-center text-center"
-            >
-              Colle un lien de chaîne dans le panneau de gauche pour lancer une analyse.
+            <div style={{ minHeight: 420 }} className="w-full h-full flex items-center justify-center">
+              {trackedChannels.length ? (
+                <TrackedChannels channels={trackedChannels} onSelect={(id) => run(id)} />
+              ) : (
+                <div style={{ color: C.muted, fontSize: 14 }} className="text-center">
+                  Colle un lien de chaîne dans le panneau de gauche pour lancer une analyse.
+                </div>
+              )}
             </div>
           )}
 
